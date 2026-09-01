@@ -1,0 +1,86 @@
+Panels:
+  - Class: rviz/Displays
+    Name: Displays
+  - Class: rviz/Views
+    Name: Views
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Alpha: 0.5
+      Cell Size: 1
+      Class: rviz/Grid
+      Color: 160; 160; 164
+      Enabled: true
+      Name: Ground Grid
+      Plane: XY
+      Reference Frame: world
+    - Class: rviz/TF
+      Enabled: true
+      Frame Timeout: 15
+      Marker Scale: 0.35
+      Name: TF
+      Show Arrows: true
+      Show Axes: true
+      Show Names: true
+    - Class: rviz/RobotModel
+      Enabled: true
+      Name: C12 Gimbal Model
+      Robot Description: robot_description
+    - Class: rviz/Pose
+      Enabled: true
+      Name: Tag Pose World
+      Shape: Axes
+      Topic: /c12/tag/pose_world_filtered
+    - Class: rviz/Pose
+      Enabled: true
+      Name: Locked Tag Pose
+      Shape: Axes
+      Topic: /c12/tag/locked_pose_world
+    - Class: rviz/Pose
+      Enabled: true
+      Name: Hover Goal
+      Shape: Arrow
+      Topic: /remote/goal
+    - Class: rviz/Odometry
+      Enabled: true
+      Name: UAV LIO Odom
+      Position Tolerance: 0.1
+      Angle Tolerance: 0.1
+      Keep: 20
+      Topic: /lio/robo/odom
+    - Class: rviz/Image
+      Enabled: true
+      Image Topic: /c12/tag/debug
+      Max Value: 1
+      Median window: 5
+      Min Value: 0
+      Name: C12 Tag Camera
+      Normalize Range: true
+      Queue Size: 2
+      Transport Hint: compressed
+  Enabled: true
+  Global Options:
+    Background Color: 40; 40; 40
+    Fixed Frame: world
+    Frame Rate: 30
+  Name: root
+  Tools:
+    - Class: rviz/Interact
+    - Class: rviz/MoveCamera
+    - Class: rviz/Select
+    - Class: rviz/FocusCamera
+    - Class: rviz/Measure
+  Views:
+    Current:
+      Class: rviz/Orbit
+      Distance: 6
+      Focal Point:
+        X: 0
+        Y: 0
+        Z: 0.5
+      Name: Current View
+      Pitch: 0.55
+      Yaw: 0.75
+Window Geometry:
+  Height: 900
+  Width: 1440

@@ -1,0 +1,31 @@
+<launch>
+  <rosparam file="$(find c12_ros1)/config/c12_pipeline.yaml" command="load"/>
+
+  <param name="robot_description" textfile="$(find c12_ros1)/urdf/c12_gimbal.urdf"/>
+  <node pkg="robot_state_publisher" type="robot_state_publisher" name="c12_robot_state_publisher" output="screen">
+    <remap from="/joint_states" to="/c12/gimbal/joint_states"/>
+  </node>
+
+  <node pkg="tf2_ros" type="static_transform_publisher" name="c12_mount_tf"
+        args="0.10 0.0 0.0 -1.578 0.0 0.0 base_link c12_mount"/>
+
+  <node pkg="c12_ros1" type="odom_tf_bridge_node.py" name="c12_odom_tf_bridge" output="screen">
+    <param name="odom_topic" value="/lio/robo/odom"/>
+    <param name="world_frame_override" value="world"/>
+    <param name="base_frame_override" value="base_link"/>
+  </node>
+
+  <node pkg="c12_ros1" type="c12_gimbal_node.py" name="c12_gimbal" output="screen"/>
+
+  <node pkg="c12_ros1" type="c12_tag_pose_node.py" name="c12_tag_pose" output="screen">
+    <param name="camera_info_file" value="$(find c12_ros1)/config/camera_1280x720.yaml"/>
+  </node>
+
+  <node pkg="c12_ros1" type="c12_tag_localization_node.py" name="c12_tag_localization" output="screen">
+    <param name="world_frame" value="world"/>
+  </node>
+
+  <node pkg="c12_ros1" type="c12_tag_mission_node.py" name="c12_tag_mission" output="screen"/>
+
+  <node pkg="rviz" type="rviz" name="c12_task_rviz" args="-d $(find c12_ros1)/config/c12_task.rviz" output="screen"/>
+</launch>

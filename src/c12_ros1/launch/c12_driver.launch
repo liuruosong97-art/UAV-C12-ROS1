@@ -1,0 +1,7 @@
+<launch>
+  <rosparam file="$(find c12_ros1)/config/c12_pipeline.yaml" command="load"/>
+  <node pkg="c12_ros1" type="c12_gimbal_node.py" name="c12_gimbal" output="screen"/>
+  <node pkg="c12_ros1" type="c12_image_bridge_node.py" name="c12_image_bridge" output="screen">
+    <param name="camera_info_file" value="$(find c12_ros1)/config/camera_1280x720.yaml"/>
+  </node>
+</launch>

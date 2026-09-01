@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<robot name="c12_gimbal">
+  <link name="c12_mount"/>
+  <link name="c12_yaw_link"/>
+  <link name="c12_pitch_link"/>
+  <link name="c12_roll_link"/>
+  <link name="c12_visible_optical_frame"/>
+
+  <joint name="c12_yaw_joint" type="continuous">
+    <parent link="c12_mount"/>
+    <child link="c12_yaw_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+
+  <joint name="c12_pitch_joint" type="revolute">
+    <parent link="c12_yaw_link"/>
+    <child link="c12_pitch_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <axis xyz="0 -1 0"/>
+    <limit lower="-1.5708" upper="0.1745" effort="1" velocity="1"/>
+  </joint>
+
+  <joint name="c12_roll_joint" type="revolute">
+    <parent link="c12_pitch_link"/>
+    <child link="c12_roll_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <axis xyz="1 0 0"/>
+    <limit lower="-0.7854" upper="0.7854" effort="1" velocity="1"/>
+  </joint>
+
+  <joint name="c12_visible_optical_joint" type="fixed">
+    <parent link="c12_roll_link"/>
+    <child link="c12_visible_optical_frame"/>
+    <origin xyz="0 0 0" rpy="-1.5708 0 -1.5708"/>
+  </joint>
+</robot>

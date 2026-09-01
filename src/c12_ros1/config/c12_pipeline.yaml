@@ -1,0 +1,106 @@
+c12_gimbal:
+  camera_ip: "192.168.1.91"
+  camera_port: 5000
+  local_ip: "0.0.0.0"
+  local_port: 5000
+  attitude_rate_hz: 10
+  ptz_speed_deg_s: 3.0
+  speed_refresh_hz: 20.0
+  motion_timeout_sec: 3.0
+  frame_id: "c12_gimbal_base"
+  move_to_startup_pose: true
+  startup_yaw_deg: 90.0
+  startup_pitch_deg: -45.0
+  startup_speed_deg_s: 3.0
+  startup_delay_sec: 2.0
+
+c12_image_bridge:
+  url: "rtsp://192.168.1.91:554/stream=1"
+  backend: "ffmpeg"
+  transport: "tcp"
+  latency_ms: 0
+  publish_hz: 30.0
+  publish_raw: true
+  publish_compressed: false
+  jpeg_quality: 75
+  resize_width: 0
+  resize_height: 0
+  raw_topic: "/c12/visible/image_raw"
+  compressed_topic: "/c12/visible/image_raw/compressed"
+  camera_info_topic: "/c12/visible/camera_info"
+  camera_info_file: ""
+  frame_id: "c12_visible_optical_frame"
+
+c12_tag_pose:
+  rtsp_url: "rtsp://192.168.1.91:554/stream=1"
+  backend: "ffmpeg_cli"
+  transport: "tcp"
+  latency_ms: 0
+  camera_info_file: ""
+  detector_type: "apriltag"
+  tag_family: "tag36h11"
+  aruco_dictionary: "DICT_ARUCO_ORIGINAL"
+  target_id: 0
+  target_code: ""
+  tag_size_m: 0.20
+  max_detection_hz: 15.0
+  use_undistort: true
+  publish_debug_image: true
+  debug_jpeg_quality: 75
+  frame_id: "c12_visible_optical_frame"
+  enable_gimbal_tracking: true
+  deadband_px: 35.0
+  yaw_kp: 0.006
+  pitch_kp: 0.006
+  yaw_sign: 1.0
+  pitch_sign: -1.0
+  max_gimbal_speed_deg_s: 3.0
+  control_publish_hz: 20.0
+  vision_stale_timeout_sec: 1.0
+  enable_gimbal_search: true
+  search_startup_yaw_deg: 90.0
+  search_startup_pitch_deg: -45.0
+  search_up_pitch_deg: 0.0
+  search_down_pitch_deg: -90.0
+  search_sweep_pitch_deg: -45.0
+  search_left_yaw_deg: -90.0
+  search_right_yaw_deg: 90.0
+  search_speed_deg_s: 1.0
+  search_sweep_step_deg: 30.0
+  search_sweep_pause_sec: 1.0
+  search_pitch_step_deg: 20.0
+  search_pitch_pause_sec: 1.0
+  search_stable_sec: 1.5
+  search_angle_tolerance_deg: 3.0
+  search_arrival_timeout_sec: 45.0
+
+c12_tag_localization:
+  world_frame: "world"
+  input_pose_topic: "/c12/tag/pose_camera"
+  position_window_size: 20
+  min_lock_samples: 12
+  lock_position_std_m: 0.10
+  lock_once: true
+
+c12_tag_mission:
+  auto_start: true
+  world_frame: "world"
+  odom_topic: "/lio/robo/odom"
+  planner_goal_topic: "/remote/goal"
+  hover_height_m: 2.0
+  target_lost_sec: 2.0
+  fine_align_distance_m: 0.50
+  horizontal_arrival_m: 0.20
+  vertical_arrival_m: 0.15
+  gimbal_home_yaw_deg: 0.0
+  gimbal_home_pitch_deg: -90.0
+  gimbal_arrival_deg: 4.0
+  use_gimbal_arrival: true
+  ignore_yaw_near_nadir: true
+  nadir_pitch_tolerance_deg: 8.0
+  image_width: 1280
+  image_height: 720
+  pixel_arrival_px: 45.0
+  use_pixel_arrival: true
+  arrival_stable_sec: 1.0
+  goal_publish_hz: 2.0
