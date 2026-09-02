@@ -68,6 +68,7 @@ class C12ImageBridge:
             transport=transport,
             latency_ms=int(rospy.get_param("~latency_ms", 0)),
             logger=RospyLogger(),
+            time_source_ns=lambda: rospy.Time.now().to_nsec(),
         )
         self.reader.start()
         self.last_sequence = -1

@@ -17,7 +17,7 @@ import subprocess
 import threading
 import time
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Callable, Optional, Tuple
 
 import cv2
 import numpy as np
@@ -39,6 +39,7 @@ class LatestFrameReader:
         latency_ms: int = 0,
         reconnect_sec: float = 1.0,
         logger=None,
+        time_source_ns: Optional[Callable[[], int]] = None,
     ) -> None:
         self.url = url
         self.backend = backend.lower()
@@ -46,6 +47,7 @@ class LatestFrameReader:
         self.latency_ms = max(0, int(latency_ms))
         self.reconnect_sec = max(0.2, float(reconnect_sec))
         self.logger = logger
+        self.time_source_ns = time_source_ns or time.time_ns
 
         if self.backend not in ("gstreamer", "ffmpeg", "ffmpeg_cli"):
             raise ValueError(
@@ -258,7 +260,7 @@ class LatestFrameReader:
                     with self._lock:
                         self._latest = frame.copy()
                         self._sequence += 1
-                        self._capture_time_ns = time.time_ns()
+                        self._capture_time_ns = self.time_source_ns()
 
             except Exception as exc:
                 self._log_warning(
@@ -307,7 +309,7 @@ class LatestFrameReader:
                 with self._lock:
                     self._latest = frame
                     self._sequence += 1
-                    self._capture_time_ns = time.time_ns()
+                    self._capture_time_ns = self.time_source_ns()
             except Exception as exc:
                 self._log_warning(
                     f"RTSP worker exception: {type(exc).__name__}: {exc}"

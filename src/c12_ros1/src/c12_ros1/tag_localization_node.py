@@ -22,9 +22,12 @@ from c12_ros1.math_utils import (
 class TagLocalizationNode:
     def __init__(self):
         self.world_frame = rospy.get_param("~world_frame", "world")
+        self.tf_lookup_timeout_sec = max(0.01, float(rospy.get_param("~tf_lookup_timeout_sec", 0.20)))
+        self.max_tf_time_offset_sec = max(0.0, float(rospy.get_param("~max_tf_time_offset_sec", 0.30)))
         self.window_size = max(3, int(rospy.get_param("~position_window_size", 20)))
         self.min_samples = max(3, int(rospy.get_param("~min_lock_samples", 12)))
         self.std_limit = float(rospy.get_param("~lock_position_std_m", 0.10))
+        self.outlier_reject_distance_m = max(0.0, float(rospy.get_param("~outlier_reject_distance_m", 0.50)))
         self.lock_once = bool(rospy.get_param("~lock_once", True))
         self.history = deque(maxlen=self.window_size)
         self.locked = False
@@ -69,12 +72,13 @@ class TagLocalizationNode:
         return msg
 
     def on_pose(self, msg):
+        stamp = msg.header.stamp if msg.header.stamp != rospy.Time(0) else rospy.Time.now()
         try:
             tf_msg = self.tf_buffer.lookup_transform(
                 self.world_frame,
                 msg.header.frame_id,
-                rospy.Time(0),
-                rospy.Duration(0.15),
+                stamp,
+                rospy.Duration(self.tf_lookup_timeout_sec),
             )
         except Exception as exc:
             now = time.monotonic()
@@ -83,11 +87,38 @@ class TagLocalizationNode:
                 self._last_tf_warn = now
             return
 
+        if self.max_tf_time_offset_sec > 0.0 and tf_msg.header.stamp != rospy.Time(0):
+            offset = abs((tf_msg.header.stamp - stamp).to_sec())
+            if offset > self.max_tf_time_offset_sec:
+                now = time.monotonic()
+                if now - self._last_tf_warn > 2.0:
+                    rospy.logwarn(
+                        "TF %s <- %s time offset %.3fs exceeds %.3fs",
+                        self.world_frame,
+                        msg.header.frame_id,
+                        offset,
+                        self.max_tf_time_offset_sec,
+                    )
+                    self._last_tf_warn = now
+                return
+
         world_tag = transform_to_matrix(tf_msg.transform) @ pose_to_matrix(msg.pose)
         world_msg = self.matrix_to_pose(world_tag, msg.header.stamp)
         self.pose_world_pub.publish(world_msg)
         if self.locked and self.lock_once:
             return
+
+        if self.outlier_reject_distance_m > 0.0 and len(self.history) >= 3:
+            old_positions = np.array([item[:3, 3] for item in self.history])
+            median_old = np.median(old_positions, axis=0)
+            distance = float(np.linalg.norm(world_tag[:3, 3] - median_old))
+            if distance > self.outlier_reject_distance_m:
+                rospy.logwarn_throttle(
+                    1.0,
+                    "Reject tag pose outlier: %.3f m from window median",
+                    distance,
+                )
+                return
 
         self.history.append(world_tag)
         positions = np.array([item[:3, 3] for item in self.history])

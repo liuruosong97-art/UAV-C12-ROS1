@@ -1,0 +1,46 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="c12_gimbal">
+  <xacro:arg name="mount_to_yaw_xyz" default="0 0 0"/>
+  <xacro:arg name="mount_to_yaw_rpy" default="0 0 0"/>
+  <xacro:arg name="yaw_to_pitch_xyz" default="0 0 0"/>
+  <xacro:arg name="yaw_to_pitch_rpy" default="0 0 0"/>
+  <xacro:arg name="pitch_to_roll_xyz" default="0 0 0"/>
+  <xacro:arg name="pitch_to_roll_rpy" default="0 0 0"/>
+  <xacro:arg name="roll_to_camera_xyz" default="0 0 0"/>
+  <xacro:arg name="roll_to_camera_rpy" default="-1.5708 0 -1.5708"/>
+
+  <link name="c12_mount"/>
+  <link name="c12_yaw_link"/>
+  <link name="c12_pitch_link"/>
+  <link name="c12_roll_link"/>
+  <link name="c12_visible_optical_frame"/>
+
+  <joint name="c12_yaw_joint" type="continuous">
+    <parent link="c12_mount"/>
+    <child link="c12_yaw_link"/>
+    <origin xyz="$(arg mount_to_yaw_xyz)" rpy="$(arg mount_to_yaw_rpy)"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+
+  <joint name="c12_pitch_joint" type="revolute">
+    <parent link="c12_yaw_link"/>
+    <child link="c12_pitch_link"/>
+    <origin xyz="$(arg yaw_to_pitch_xyz)" rpy="$(arg yaw_to_pitch_rpy)"/>
+    <axis xyz="0 -1 0"/>
+    <limit lower="-1.5708" upper="0.1745" effort="1" velocity="1"/>
+  </joint>
+
+  <joint name="c12_roll_joint" type="revolute">
+    <parent link="c12_pitch_link"/>
+    <child link="c12_roll_link"/>
+    <origin xyz="$(arg pitch_to_roll_xyz)" rpy="$(arg pitch_to_roll_rpy)"/>
+    <axis xyz="1 0 0"/>
+    <limit lower="-0.7854" upper="0.7854" effort="1" velocity="1"/>
+  </joint>
+
+  <joint name="c12_visible_optical_joint" type="fixed">
+    <parent link="c12_roll_link"/>
+    <child link="c12_visible_optical_frame"/>
+    <origin xyz="$(arg roll_to_camera_xyz)" rpy="$(arg roll_to_camera_rpy)"/>
+  </joint>
+</robot>

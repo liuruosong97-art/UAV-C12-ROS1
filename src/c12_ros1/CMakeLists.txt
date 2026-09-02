@@ -23,6 +23,8 @@ catkin_install_python(PROGRAMS
   scripts/c12_tag_localization_node.py
   scripts/c12_tag_mission_node.py
   scripts/odom_tf_bridge_node.py
+  scripts/static_tf_from_params_node.py
+  scripts/tag_world_stability_check_node.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

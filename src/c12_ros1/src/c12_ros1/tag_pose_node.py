@@ -13,6 +13,7 @@ import yaml
 from geometry_msgs.msg import PointStamped, PoseStamped, Vector3, Vector3Stamped
 from sensor_msgs.msg import CompressedImage
 from std_msgs.msg import Bool, Float32, Int32, String
+from std_srvs.srv import SetBool, SetBoolResponse
 
 from c12_ros1.ros_compat import RospyLogger
 from c12_ros1.rtsp_reader import LatestFrameReader
@@ -67,6 +68,10 @@ class C12TagPoseNode:
         self.publish_debug = bool(rospy.get_param("~publish_debug_image", True))
         self.jpeg_quality = int(rospy.get_param("~debug_jpeg_quality", 75))
         self.enable_tracking = bool(rospy.get_param("~enable_gimbal_tracking", True))
+        self.safe_yaw = float(rospy.get_param("~safe_yaw_deg", 90.0))
+        self.safe_pitch = float(rospy.get_param("~safe_pitch_deg", -45.0))
+        self.safe_pose_speed = abs(float(rospy.get_param("~safe_pose_speed_deg_s", 3.0)))
+        self.safe_pose_repeat_sec = max(0.2, float(rospy.get_param("~safe_pose_repeat_sec", 2.0)))
         self.deadband_px = float(rospy.get_param("~deadband_px", 35.0))
         self.yaw_kp = float(rospy.get_param("~yaw_kp", 0.006))
         self.pitch_kp = float(rospy.get_param("~pitch_kp", 0.006))
@@ -111,8 +116,12 @@ class C12TagPoseNode:
         self.error_pub = rospy.Publisher("/c12/tag/pose_error", Float32, queue_size=10)
         self.speed_pub = rospy.Publisher("/c12/gimbal/cmd_speed_deg_s", Vector3, queue_size=10)
         self.angle_cmd_pub = rospy.Publisher("/c12/gimbal/cmd_angle_deg", Vector3, queue_size=10)
+        self.control_state_pub = rospy.Publisher("/c12/gimbal/auto_control_state", String, queue_size=1, latch=True)
         self.debug_pub = rospy.Publisher("/c12/tag/debug/compressed", CompressedImage, queue_size=1) if self.publish_debug else None
         rospy.Subscriber("/c12/gimbal/angles_deg", Vector3Stamped, self._on_gimbal_angles, queue_size=10)
+        rospy.Subscriber("/tag_mission/state", String, self._on_mission_state, queue_size=1)
+        rospy.Subscriber("/c12/gimbal/manual_override", Bool, self._on_manual_override, queue_size=1)
+        rospy.Service("/c12/gimbal/set_manual_override", SetBool, self._on_set_manual_override)
 
         self._control_lock = threading.Lock()
         self._desired_yaw = 0.0
@@ -121,6 +130,11 @@ class C12TagPoseNode:
         self._tracking_active = False
         self._stale_stop_sent = True
         self._current_gimbal = None
+        self._mission_state = "IDLE"
+        self._manual_override = False
+        self._safe_pose_sent = False
+        self._last_safe_pose = 0.0
+        self._stop_sent_for_state = False
         self._search_state = "wait_initial"
         self._search_goal = None
         self._search_goal_since = 0.0
@@ -149,11 +163,16 @@ class C12TagPoseNode:
             transport=transport,
             latency_ms=int(rospy.get_param("~latency_ms", 0)),
             logger=RospyLogger(),
+            time_source_ns=lambda: rospy.Time.now().to_nsec(),
         )
         self.reader.start()
         self.last_sequence = -1
         hz = max(0.5, float(rospy.get_param("~max_detection_hz", 15.0)))
         self.timer = rospy.Timer(rospy.Duration(1.0 / hz), self.process_latest)
+
+    def _publish_control_state(self, mode):
+        suffix = "MANUAL_OVERRIDE" if self._manual_override else mode
+        self.control_state_pub.publish(String(data=suffix))
 
     def _load_camera_info(self):
         path = rospy.get_param("~camera_info_file", "")
@@ -205,6 +224,60 @@ class C12TagPoseNode:
             self._tracking_active = True
             self._stale_stop_sent = False
 
+    def _stop_tracking(self):
+        with self._control_lock:
+            self._desired_yaw = 0.0
+            self._desired_pitch = 0.0
+            self._tracking_active = False
+            self._stale_stop_sent = True
+        self.speed_pub.publish(Vector3())
+
+    def _on_mission_state(self, msg):
+        state = msg.data.strip().upper()
+        if state == self._mission_state:
+            return
+        self._mission_state = state
+        self._safe_pose_sent = False
+        self._stop_sent_for_state = False
+        self._reset_search_cycle()
+        if state not in ("SEARCH", "TRACK", "ACQUIRE", "LOCALIZE", "LOCK_TARGET", "APPROACH", "FINE_ALIGN"):
+            self._stop_tracking()
+        self._publish_control_state(state)
+
+    def _on_manual_override(self, msg):
+        self._manual_override = bool(msg.data)
+        if self._manual_override:
+            self._stop_tracking()
+            self._reset_search_cycle()
+        self._publish_control_state(self._mission_state)
+
+    def _on_set_manual_override(self, req):
+        self._manual_override = bool(req.data)
+        if self._manual_override:
+            self._stop_tracking()
+            self._reset_search_cycle()
+        self._publish_control_state(self._mission_state)
+        return SetBoolResponse(success=True, message="manual_override=%s" % self._manual_override)
+
+    def _auto_allowed(self):
+        return not self._manual_override
+
+    def _tracking_allowed(self):
+        return self._auto_allowed() and self.enable_tracking and self._mission_state in (
+            "TRACK",
+            "ACQUIRE",
+            "LOCALIZE",
+            "LOCK_TARGET",
+            "APPROACH",
+            "FINE_ALIGN",
+        )
+
+    def _search_allowed(self):
+        return self._auto_allowed() and self.enable_search and self._mission_state == "SEARCH"
+
+    def _safe_pose_allowed(self):
+        return self._auto_allowed() and self._mission_state == "WAIT_HOVER"
+
     def _control_loop(self):
         period = 1.0 / self.control_publish_hz
         while not rospy.is_shutdown() and not self._control_stop.wait(period):
@@ -213,7 +286,7 @@ class C12TagPoseNode:
                 age = time.monotonic() - self._last_vision
                 yaw = self._desired_yaw
                 pitch = self._desired_pitch
-                if not self._tracking_active:
+                if not self._tracking_allowed() or not self._tracking_active:
                     should_publish = False
                 elif age > self.stale_timeout:
                     if self._stale_stop_sent:
@@ -293,9 +366,24 @@ class C12TagPoseNode:
         self._set_search_state(state, next_yaw, self.search_sweep_pitch)
 
     def _search_loop(self, _event):
-        if not self.enable_search:
+        if self._safe_pose_allowed() and (
+            not self._safe_pose_sent
+            or time.monotonic() - self._last_safe_pose >= self.safe_pose_repeat_sec
+        ):
+            self.angle_cmd_pub.publish(Vector3(x=self.safe_yaw, y=self.safe_pitch, z=self.safe_pose_speed))
+            self._safe_pose_sent = True
+            self._last_safe_pose = time.monotonic()
+            self._publish_control_state("WAIT_HOVER_SAFE")
+            return
+        if self._mission_state in ("ARRIVED", "ABORTED", "TARGET_LOST", "IDLE") and not self._stop_sent_for_state:
+            self._stop_tracking()
+            self._stop_sent_for_state = True
+            self._publish_control_state(self._mission_state)
+            return
+        if not self._search_allowed():
             return
         if self._tag_visible:
+            self._stop_tracking()
             self._reset_search_cycle()
             return
         if self._search_goal is None:
@@ -439,7 +527,7 @@ class C12TagPoseNode:
         self._tag_visible = detection is not None
         center = None
         if detection is not None:
-            now = rospy.Time.now()
+            now = rospy.Time.from_sec(snapshot.capture_time_ns * 1e-9) if snapshot.capture_time_ns > 0 else rospy.Time.now()
             center = detection["center"]
             center_msg = PointStamped()
             center_msg.header.stamp = now
@@ -471,8 +559,11 @@ class C12TagPoseNode:
             cv2.circle(frame, tuple(center.astype(int)), 6, (0, 0, 255), -1)
             cv2.putText(frame, "%s %s z=%.2fm" % (self.detector_type, detection["code"], t[2]), tuple(corners[0]), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
 
-        if self.enable_tracking and center is not None:
+        if self._tracking_allowed() and center is not None:
             self._tracking_command(center, width, height)
+        elif center is None and self._tracking_active and not self._stale_stop_sent:
+            # The control loop will send one zero-speed command after stale_timeout.
+            pass
 
         if self.debug_pub is not None:
             cv2.drawMarker(frame, (width // 2, height // 2), (255, 0, 0), cv2.MARKER_CROSS, 30, 2)

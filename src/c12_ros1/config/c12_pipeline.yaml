@@ -8,7 +8,7 @@ c12_gimbal:
   speed_refresh_hz: 20.0
   motion_timeout_sec: 3.0
   frame_id: "c12_gimbal_base"
-  move_to_startup_pose: true
+  move_to_startup_pose: false
   startup_yaw_deg: 90.0
   startup_pitch_deg: -45.0
   startup_speed_deg_s: 3.0
@@ -49,6 +49,10 @@ c12_tag_pose:
   debug_jpeg_quality: 75
   frame_id: "c12_visible_optical_frame"
   enable_gimbal_tracking: true
+  safe_yaw_deg: 90.0
+  safe_pitch_deg: -45.0
+  safe_pose_speed_deg_s: 3.0
+  safe_pose_repeat_sec: 2.0
   deadband_px: 35.0
   yaw_kp: 0.006
   pitch_kp: 0.006
@@ -77,9 +81,12 @@ c12_tag_pose:
 c12_tag_localization:
   world_frame: "world"
   input_pose_topic: "/c12/tag/pose_camera"
+  tf_lookup_timeout_sec: 0.20
+  max_tf_time_offset_sec: 0.30
   position_window_size: 20
   min_lock_samples: 12
   lock_position_std_m: 0.10
+  outlier_reject_distance_m: 0.50
   lock_once: true
 
 c12_tag_mission:
@@ -88,7 +95,13 @@ c12_tag_mission:
   odom_topic: "/lio/robo/odom"
   planner_goal_topic: "/remote/goal"
   hover_height_m: 2.0
+  min_takeoff_height_m: 0.5
+  hover_stable_sec: 2.0
+  hover_max_linear_speed_mps: 0.15
+  hover_max_vertical_speed_mps: 0.10
+  hover_max_roll_pitch_deg: 8.0
   target_lost_sec: 2.0
+  lost_hold_after_lock: false
   fine_align_distance_m: 0.50
   horizontal_arrival_m: 0.20
   vertical_arrival_m: 0.15
@@ -104,3 +117,9 @@ c12_tag_mission:
   use_pixel_arrival: true
   arrival_stable_sec: 1.0
   goal_publish_hz: 2.0
+
+c12_static_base_to_mount:
+  parent_frame: "base_link"
+  child_frame: "c12_mount"
+  xyz: [0.10, 0.0, 0.0]
+  rpy: [0.0, 0.0, -1.578]
