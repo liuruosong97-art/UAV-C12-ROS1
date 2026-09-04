@@ -46,9 +46,10 @@ src/c12_ros1
 
 ```bash
 roslaunch c12_ros1 c12_hardware_pipeline.launch
+rosrun rqt_image_view rqt_image_view
 ```
 
-该 launch 默认 `auto_start: true`，但不会立刻开始云台搜索。任务会先进入 `WAIT_HOVER`，等待 `/lio/robo/odom` 满足起飞高度、速度和姿态稳定条件，确认无人机已经稳定悬停后才进入 `SEARCH`。
+该 launch 默认 `auto_start: true`，但不会立刻开始云台搜索。任务会先进入 `WAIT_HOVER`，等待 `/lio/robo/odom` 满足起飞高度、速度和姿态稳定条件，确认无人机已经稳定悬停后才进入 `SEARCH`。rosrun启动图像话题
 
 ## 完整任务链启动内容
 

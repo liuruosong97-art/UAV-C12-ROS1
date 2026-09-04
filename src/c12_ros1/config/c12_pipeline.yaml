@@ -42,7 +42,7 @@ c12_tag_pose:
   aruco_dictionary: "DICT_ARUCO_ORIGINAL"
   target_id: 0
   target_code: ""
-  tag_size_m: 0.20
+  tag_size_m: 0.10
   max_detection_hz: 15.0
   use_undistort: true
   publish_debug_image: true
@@ -56,8 +56,8 @@ c12_tag_pose:
   deadband_px: 35.0
   yaw_kp: 0.006
   pitch_kp: 0.006
-  yaw_sign: 1.0
-  pitch_sign: -1.0
+  yaw_sign: -1.0
+  pitch_sign: 1.0
   max_gimbal_speed_deg_s: 3.0
   control_publish_hz: 20.0
   vision_stale_timeout_sec: 1.0
@@ -94,7 +94,7 @@ c12_tag_mission:
   world_frame: "world"
   odom_topic: "/lio/robo/odom"
   planner_goal_topic: "/remote/goal"
-  hover_height_m: 2.0
+  hover_height_m: 1.2
   min_takeoff_height_m: 0.5
   hover_stable_sec: 2.0
   hover_max_linear_speed_mps: 0.15

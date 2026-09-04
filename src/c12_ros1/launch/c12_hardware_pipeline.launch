@@ -6,8 +6,8 @@
   <arg name="enable_tracking" default="true"/>
   <arg name="camera_ip" default="192.168.1.91"/>
   <arg name="target_id" default="0"/>
-  <arg name="tag_size_m" default="0.20"/>
-  <arg name="hover_height_m" default="2.0"/>
+  <arg name="tag_size_m" default="0.10"/>
+  <arg name="hover_height_m" default="1.2"/>
   <arg name="lio_odom_topic" default="/lio/robo/odom"/>
   <arg name="planner_goal_topic" default="/remote/goal"/>
   <arg name="world_frame" default="world"/>
